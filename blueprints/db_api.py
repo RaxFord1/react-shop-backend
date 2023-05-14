@@ -1,4 +1,4 @@
-from flask import jsonify, request, Blueprint
+from flask import jsonify, request, Blueprint, make_response
 
 from database.database import Session, Category, Item, OrderItem, Favourite, User, Order
 
@@ -83,10 +83,17 @@ def add_item():
     session = Session()
     item_name = request.json['name']
     item_description = request.json['description']
-    item_image_url = request.json['image_url']
-    item_category_id = request.json['category_id']
+    item_image_url = request.json['image']
+    item_category = request.json['category']
     item_on_sale = request.json['on_sale']
     item_price = request.json['price']
+    item_category_id = session.query(Category.id).filter_by(value=item_category).first()
+    if item_category_id is None:
+        item_category_id = session.query(Category.id).filter_by(name=item_category).first()
+        if item_category_id is None:
+            print(f"{item_category = }")
+            return make_response({'message': 'Unknown category!'}, 400)
+    item_category_id = item_category_id[0]
     item = Item(name=item_name, description=item_description, image_url=item_image_url,
                 category_id=item_category_id, on_sale=item_on_sale, price=item_price)
     session.add(item)
@@ -96,6 +103,38 @@ def add_item():
 
     return jsonify({'message': 'Item added successfully', 'id': item.id})
 
+
+# Update an item
+@dbAPI.route('/item/<int:item_id>', methods=['PUT'])
+def update_item(item_id):
+    session = Session()
+    item = session.query(Item).get(item_id)
+
+    if not item:
+        session.close()
+        return jsonify({'message': 'Item not found'})
+
+    item.name = request.json.get('name', item.name)
+    item.description = request.json.get('description', item.description)
+    item.image_url = request.json.get('image', item.image_url)
+    item_category = request.json.get('category', None)
+    if item_category is None:
+        item.category_id = request.json.get('category_id', item.category_id)
+    else:
+        item_category_id = session.query(Category.id).filter_by(value=item_category).first()
+        if item_category_id is None:
+            item_category_id = session.query(Category.id).filter_by(name=item_category).first()
+            if item_category_id is None:
+                print(f"{item_category = }")
+                return make_response({'message': 'Unknown category!'}, 400)
+        item.category_id = item_category_id[0]
+    item.on_sale = request.json.get('on_sale', item.on_sale)
+    item.price = request.json.get('price', item.price)
+
+    session.commit()
+    session.close()
+
+    return jsonify({'message': 'Item updated successfully'})
 
 # Delete an item by ID
 @dbAPI.route('/item/<int:item_id>', methods=['DELETE'])

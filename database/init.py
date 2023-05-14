@@ -75,7 +75,7 @@ def main():
             name="Fourth Product",
             description="Fourth product description.",
             image_url="https://dummyimage.com/450x300/dee2e6/6c757d.jpg",
-            on_sale=False,
+            on_sale=True,
             price=40.0,
             category="learning"
         ),

@@ -67,9 +67,9 @@ class OrderItem(Base):
 class Favourite(Base):  # uk - Favourite | US - Favorite
     __tablename__ = 'favourite'
     id = Column(Integer, primary_key=True, nullable=False)
-    item_id = Column(Integer, ForeignKey('item.id'), nullable=False)
+    item_id = Column(Integer, ForeignKey('item.id', ondelete='CASCADE'), nullable=False)
     item = relationship('Item')
-    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     user = relationship('User')
 
     __table_args__ = (
