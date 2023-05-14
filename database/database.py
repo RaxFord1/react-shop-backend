@@ -52,7 +52,7 @@ class Order(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     user = relationship('User', backref='orders')
-    order_date = Column(DateTime, default=datetime.utcnow)
+    order_date = Column(DateTime, default=None)
     paid = Column(Boolean, default=False)
 
 

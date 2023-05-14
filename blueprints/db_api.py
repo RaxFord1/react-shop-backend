@@ -1,4 +1,7 @@
+from datetime import datetime
+
 from flask import jsonify, request, Blueprint, make_response
+from sqlalchemy import desc
 
 from database.database import Session, Category, Item, OrderItem, Favourite, User, Order
 
@@ -153,34 +156,6 @@ def delete_item(item_id):
     return jsonify({'error': f'Item with ID {item_id} not found'}), 404
 
 
-# Add a new order item
-@dbAPI.route('/order_item', methods=['POST'])
-def add_order_item():
-    session = Session()
-    order_id = request.json['order_id']
-    item_id = request.json['item_id']
-    order_item = OrderItem(order_id=order_id, item_id=item_id)
-    session.add(order_item)
-    session.commit()
-    session.close()
-    return jsonify({'message': 'Order item added successfully'})
-
-
-# Delete an order item by order ID and item ID
-@dbAPI.route('/order_item/<int:order_id>/<int:item_id>', methods=['DELETE'])
-def delete_order_item(order_id, item_id):
-    session = Session()
-    order_item = session.query(OrderItem).filter_by(order_id=order_id, item_id=item_id).first()
-    if order_item:
-        session.delete(order_item)
-        session.commit()
-        session.close()
-        return jsonify({'message': 'Order item deleted successfully'})
-    else:
-        session.close()
-        return jsonify({'error': f'Order item with order ID {order_id} and item ID {item_id} not found'}), 404
-
-
 # Add a new favourite
 @dbAPI.route('/favourite', methods=['POST'])
 def add_favourite():
@@ -250,3 +225,107 @@ def add_order():
     session.commit()
     session.close()
     return jsonify({'message': 'Order added successfully'})
+
+
+def get_or_create_last_unpaid_order(user_id):
+    session = Session()
+    last_unpaid_order = session.query(Order).filter(
+        Order.user_id == user_id, Order.paid == False
+    ).order_by(desc(Order.id)).first()
+    if last_unpaid_order:
+        order_id = last_unpaid_order.id
+        session.commit()
+        session.close()
+        return order_id
+    else:
+        new_order = Order(user_id=user_id)
+        session.add(new_order)
+        session.flush()
+        order_id = new_order.id
+        session.commit()
+        session.close()
+        return order_id
+
+
+@dbAPI.route('/last_unpaid_order/<int:user_id>', methods=['GET'])
+def last_unpaid_order_api(user_id):
+    order_id = get_or_create_last_unpaid_order(user_id)
+    if order_id is not None:
+        return jsonify({'id': f'{order_id}'})
+
+    return make_response({'message': 'Couldn\'t get last unpaid order! Maybe unknown user?'}, 400)
+
+
+# Add a new order item
+@dbAPI.route('/order_item', methods=['POST'])
+def add_order_item():
+    session = Session()
+    user_id = request.json['user_id']
+    item_id = request.json['item_id']
+    # Get the last unpaid order with the maximum ID
+    last_unpaid_order = get_or_create_last_unpaid_order(user_id)
+
+    if last_unpaid_order:
+        order_item = OrderItem(order_id=last_unpaid_order, item_id=item_id)
+        session.add(order_item)
+        session.commit()
+        session.close()
+        return jsonify({'message': 'Order item added successfully'})
+
+    return make_response({'message': 'Couldn\'t add last unpaid order! Maybe unknown user?'}, 400)
+
+
+# Add a new order item
+@dbAPI.route('/order_items/<int:order_id>', methods=['GET'])
+def get_order_items(order_id):
+    session = Session()
+    # Get the last unpaid order with the maximum ID
+    order_items = session.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+    session.close()
+
+    if not order_items:
+        return jsonify({'message': 'No order_items found'})
+
+    item_list = []
+    for item in order_items:
+        item_list.append({
+            'item_id': item.item_id,
+            'order_id': item.order_id
+        })
+
+    return jsonify({'items': item_list})
+
+
+@dbAPI.route('/pay', methods=['POST'])
+def pay_order():
+    session = Session()
+    order_id = request.json['order_id']
+    # Retrieve the order by ID
+    order = session.query(Order).filter(Order.id == order_id).first()
+
+    if order:
+        order.order_date = datetime.utcnow()
+        order.paid = True
+
+        session.commit()
+        session.close()
+
+        return jsonify({'message': 'Order has been marked as paid'})
+    else:
+        session.close()
+        return jsonify({'message': 'Order not found'})
+
+
+# Delete an order item by order ID and item ID
+@dbAPI.route('/order_item/<int:order_id>/<int:item_id>', methods=['DELETE'])
+def delete_order_item(order_id, item_id):
+    session = Session()
+    order_item = session.query(OrderItem).filter_by(order_id=order_id, item_id=item_id).first()
+    if order_item:
+        session.delete(order_item)
+        session.commit()
+        session.close()
+        return jsonify({'message': 'Order item deleted successfully'})
+    else:
+        session.close()
+        return jsonify({'error': f'Order item with order ID {order_id} and item ID {item_id} not found'}), 404
