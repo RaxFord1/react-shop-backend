@@ -29,8 +29,9 @@ def get_categories():
 @dbAPI.route('/category', methods=['POST'])
 def add_category():
     session = Session()
-    category_name = request.json['name']
-    category = Category(name=category_name)
+    category_name = request.json['label']
+    category_value = request.json['value']
+    category = Category(name=category_name, value=category_value)
     session.add(category)
     session.commit()
     session.refresh(category)
@@ -135,6 +136,7 @@ def update_item(item_id):
     session.close()
 
     return jsonify({'message': 'Item updated successfully'})
+
 
 # Delete an item by ID
 @dbAPI.route('/item/<int:item_id>', methods=['DELETE'])
