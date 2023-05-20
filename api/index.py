@@ -24,5 +24,5 @@ def home():
 #     Base.metadata.create_all(engine)
 #     return "INITED DB "
 
-Base.metadata.create_all(engine)
-app.run()
+# Base.metadata.create_all(engine)
+# app.run()
