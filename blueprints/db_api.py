@@ -3,7 +3,7 @@ from datetime import datetime
 from flask import jsonify, request, Blueprint, make_response
 from sqlalchemy import desc
 
-from database.database import Session, Category, Item, OrderItem, Favourite, User, Order
+from database.database import Session, Category, Item, OrderItem, Favourite, User, Order, Review
 
 dbAPI = Blueprint('db_api', __name__, template_folder='templates')
 
@@ -329,3 +329,44 @@ def delete_order_item(order_id, item_id):
     else:
         session.close()
         return jsonify({'error': f'Order item with order ID {order_id} and item ID {item_id} not found'}), 404
+
+
+# Add a new review
+@dbAPI.route('/review', methods=['POST'])
+def add_review():
+    session = Session()
+    item_id = request.json['item_id']
+    user_id = request.json['user_id']
+    text = request.json['message']
+    review = Review(text=text, item_id=item_id, user_id=user_id)
+    session.add(review)
+    session.commit()
+    session.close()
+    return jsonify({'message': 'Review added successfully'})
+
+
+# Get a review on item
+@dbAPI.route('/review/<int:item_id>', methods=['GET'])
+def get_review(item_id):
+    session = Session()
+    # Get the last unpaid order with the maximum ID
+    review_items: [Review] = session.query(Review).filter(Review.item_id == item_id).all()
+    session.close()
+
+    if not review_items:
+        return jsonify({'message': 'No reviews found'})
+
+    session = Session()
+    item_list = []
+    for item in review_items:
+        user = session.query(User).filter(User.id == item.user_id).first()
+        session.refresh(user)
+        user_name = user.first_name + " " + user.last_name
+
+        item_list.append({
+            'text': item.text,
+            'user_name': user_name
+        })
+    session.close()
+
+    return jsonify({'items': item_list})

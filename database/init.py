@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.exc import IntegrityError
 
-from database import Category, Session, Item, User, Favourite, Base, engine
+from database import Category, Session, Item, User, Favourite, Base, engine, Review
 
 
 def main():
@@ -39,6 +39,32 @@ def main():
         user_id: int = None
         item_id: int = None
         id: int = None
+
+    @dataclass
+    class ReviewInit:
+        text: str  # Review.text
+        user_email: str
+        item_name: str = None
+        id: int = None
+
+    reviews_texts = [
+        "This product exceeded my expectations! It's a must-have for anyone looking to upgrade their daily routine.",
+        "I'm in love with this item! It's the perfect addition to my collection and has quickly become my favorite.",
+        "I can't imagine my life without this product now. It has made such a positive impact on my overall well-being.",
+        "I'm blown away by the quality of this item. It's durable, reliable, and definitely worth the investment.",
+        "If you're looking for a game-changer, this is it! I'm amazed by how much easier this item has made my life.",
+        "This product has completely transformed my experience. I don't know how I managed without it before.",
+        "I was skeptical at first, but now I'm a believer. This item has exceeded all my expectations and more.",
+        "The attention to detail in this product is exceptional. It's clear that the manufacturer truly cares about "
+        "their customers.",
+        "I've tried many similar items, but this one stands out from the rest. It's a game-changer in its category.",
+        "I'm thoroughly impressed with this product. It's efficient, user-friendly, and has a sleek design.",
+        "The functionality of this item is top-notch. It's made my daily tasks so much easier and enjoyable.",
+        "I can't recommend this product enough. It's a must-have for anyone seeking convenience and quality.",
+        "I'm so glad I stumbled upon this item. It has quickly become an essential part of my daily routine.",
+        "The value for money with this product is outstanding. You won't find a better deal anywhere else.",
+        "This item has far exceeded my expectations. I can't express how much I love it and how useful it has been."
+    ]
 
     categories: [CategoryInit] = [
         CategoryInit(value="nft", name="NFT"),
@@ -159,6 +185,17 @@ def main():
             )
 
     print(favorites)
+
+    reviews: [ReviewInit] = []
+    for item in items:
+        selected_users: [UserInit] = random.sample(users, random.randint(0, len(users)))
+        for user in selected_users:
+            text = random.choice(reviews_texts)
+            reviews.append(
+                ReviewInit(text=text, user_email=user.email, item_name=item.name)
+            )
+
+    print(reviews)
     # favorites: [FavoriteInit] = [
     #     FavoriteInit(item_name="First Product", user_email="dzundzadima@gmail.com"),
     #     FavoriteInit(item_name="Second Product", user_email="dzundzadima@gmail.com"),
@@ -267,11 +304,44 @@ def main():
 
         session.close()
 
+    def init_reviews():
+        session = Session()
+        for review_init in reviews:
+            try:
+                # get user_id
+                user_id, = session.query(User.id).filter_by(email=review_init.user_email).first()
+                review_init.user_id = user_id
+
+                # get item_id
+                item_id, = session.query(Item.id).filter_by(name=review_init.item_name).first()
+                review_init.item_id = item_id
+
+                review = Review(
+                    text=review_init.text,
+                    user_id=review_init.user_id,
+                    item_id=review_init.item_id,
+                )
+                session.add(review)
+                session.commit()
+                session.refresh(review)
+            except IntegrityError:
+                session.rollback()
+                print(f"Review integrity Error at user_id={review_init.user_id}, item_id={review_init.item_id}")
+                review = session.query(Favourite).filter_by(
+                    user_id=review_init.user_id,
+                    item_id=review_init.item_id
+                ).first()
+
+            review_init.id = review.id
+
+        session.close()
+
     def init_db():
         init_categories()
         init_items()
         init_users()
         init_favorites()
+        init_reviews()
 
     init_db()
 

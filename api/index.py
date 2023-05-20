@@ -1,5 +1,3 @@
-import os
-
 from flask import Flask
 from flask_cors import CORS
 
@@ -26,5 +24,5 @@ def home():
 #     Base.metadata.create_all(engine)
 #     return "INITED DB "
 
-# Base.metadata.create_all(engine)
-# app.run()
+Base.metadata.create_all(engine)
+app.run()

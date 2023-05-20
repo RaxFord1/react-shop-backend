@@ -77,6 +77,21 @@ class Favourite(Base):  # uk - Favourite | US - Favorite
     )
 
 
+# Define the Review model
+class Review(Base):
+    __tablename__ = 'review'
+    id = Column(Integer, primary_key=True, nullable=False)
+    text = Column(String, nullable=False)
+    item_id = Column(Integer, ForeignKey('item.id', ondelete='CASCADE'), nullable=False)
+    item = relationship('Item')
+    user_id = Column(Integer, ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    user = relationship('User')
+
+    # __table_args__ = (
+    #     UniqueConstraint('item_id', 'user_id', name='uq_review_item_user'),
+    # )
+
+
 if __name__ == "__main__":
     # Create the tables in the database
     Base.metadata.create_all(engine)
