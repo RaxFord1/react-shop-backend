@@ -39,7 +39,7 @@ The PostgreSQL database used by React-Shop Backend follows this structure:
 - `OrderItem` (order_id, item_id)
 - `Favourite` (id, item_id, user_id)
 - `Review` (id, text, item_id, user_id)
-- 
+
 ![React-Shop Frontend](https://github.com/RaxFord1/react-shop-backend/blob/main/public/physical-model-database.jpg?raw=true)
 
 
